@@ -8,8 +8,10 @@ var request = require('request');
 var express = require('express');
 var app = express();
 var cors = require('cors');
+var compression = require('compression');
 
 app.use(cors());
+app.use(compression());
 
 var elasticsearchClient = new elasticsearch.Client({
   host: 'localhost:9200',
