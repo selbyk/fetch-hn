@@ -9,6 +9,7 @@
   "author": "Selby Kendrick",
   "license": "MIT",
   "dependencies": {
+    "compression": "^1.4.3",
     "cors": "^2.6.0",
     "elasticsearch": "^4.0.2",
     "express": "^4.12.3",
