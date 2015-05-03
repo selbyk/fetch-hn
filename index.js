@@ -7,6 +7,9 @@ var elasticsearch = require('elasticsearch');
 var request = require('request');
 var express = require('express');
 var app = express();
+var cors = require('cors');
+
+app.use(cors());
 
 var elasticsearchClient = new elasticsearch.Client({
   host: 'localhost:9200',
