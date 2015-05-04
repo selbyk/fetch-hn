@@ -37,6 +37,12 @@ var changes = new Firebase("https://hacker-news.firebaseio.com/v0/updates");
   Either this or reverse engineer HN's ranking algorithms.
   Probably only needed for top articles, may change in the future
 */
+var topStoryIds = [];
+var newStoryIds = [];
+var askStoryIds = [];
+var showStoryIds = [];
+var jobStoryIds = [];
+
 var topStoryItems = [];
 var newStoryItems = [];
 var askStoryItems = [];
@@ -451,6 +457,20 @@ app.get('/hnItems', function(req, res) {
         }
       }
     };
+  }
+
+  if (req.query.sort) {
+    searchBody.sort = [{
+      "time": {
+        "order": "desc"
+      }
+    }];
+  } else {
+    searchBody.sort = [{
+      "time": {
+        "order": "desc"
+      }
+    }];
   }
 
   if (req.query.page && req.query.page > 0) {
