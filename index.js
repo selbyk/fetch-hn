@@ -492,6 +492,9 @@ app.get('/hnItems', function(req, res) {
         res.json(payload);
       } else {
         if (response.hits.hits && response.hits.hits.length > 0) {
+          payload.meta.total = response.hits.total;
+          payload.meta.pageTotal = Math.ceil(response.hits.total / pageSize);
+
           payload.hnItems = _.map(response.hits.hits, function(hit) {
             return hit._source;
           });
