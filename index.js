@@ -135,7 +135,7 @@ var indexUser = function(user) {
 };
 
 var fetchItem = function(itemId) {
-  console.log('Fetching item ' + itemId);
+  //console.log('Fetching item ' + itemId);
   return new Promise(function(fulfill, reject) {
     request('https://hacker-news.firebaseio.com/v0/item/' + itemId + '.json', function(error, response, body) {
       if (error) {
@@ -245,10 +245,12 @@ maxitemid.once("value", function(snapshot) {
   elasticsearchClient.search({
     index: 'hn',
     type: 'item',
-    sort: 'time:asc',
+    sort: 'id:asc',
     size: 1
   }, function(err, response) {
     // ...
+    console.log(response);
+    console.log(response.hits);
     if (err) {
       console.log(err);
       console.log('Walking items from ' + snapshot.val());
@@ -256,9 +258,9 @@ maxitemid.once("value", function(snapshot) {
     } else {
       if (response.hits.hits && response.hits.hits.length > 0) {
         //console.log(response.hits.hits[0]);
-        if (response.hits.hits[0].id > 1) {
-          console.log('Walking items from ' + response.hits.hits[0].id);
-          walkItems(response.hits[0].id);
+        if (response.hits.hits[0]._id > 0) {
+          console.log('Walking items from ' + response.hits.hits[0]._id);
+          walkItems(response.hits.hits[0]._id);
         } else {
           console.log('Walking items from ' + snapshot.val());
           walkItems(snapshot.val());
