@@ -135,6 +135,7 @@ var indexUser = function(user) {
 };
 
 var fetchItem = function(itemId) {
+  console.log('Fetching item ' + itemId);
   return new Promise(function(fulfill, reject) {
     request('https://hacker-news.firebaseio.com/v0/item/' + itemId + '.json', function(error, response, body) {
       if (error) {
@@ -430,6 +431,19 @@ app.get('/hnItems', function(req, res) {
           filter: {
             term: {
               type: req.query.type
+            }
+          }
+        }
+      }
+    };
+  } else {
+    searchBody = {
+      query: {
+        filtered: {
+          query: searchBody.query,
+          filter: {
+            term: {
+              type: 'story'
             }
           }
         }
