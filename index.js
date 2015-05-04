@@ -1,5 +1,8 @@
 "use strict";
 
+/*
+  External npm modules
+*/
 var Firebase = require("firebase");
 var Promise = require('promise');
 var _ = require('lodash');
@@ -10,120 +13,44 @@ var app = express();
 var cors = require('cors');
 var compression = require('compression');
 
-app.use(cors());
-app.use(compression());
-
+/*
+  Local elasticsearch client
+*/
 var elasticsearchClient = new elasticsearch.Client({
   host: 'localhost:9200',
   log: 'error'
 });
 
+/*
+  Firebase clients
+*/
+var maxitemid = new Firebase("https://hacker-news.firebaseio.com/v0/maxitem");
+var topstories = new Firebase("https://hacker-news.firebaseio.com/v0/topstories");
+var newstories = new Firebase("https://hacker-news.firebaseio.com/v0/newstories");
+var askstories = new Firebase("https://hacker-news.firebaseio.com/v0/askstories");
+var showstories = new Firebase("https://hacker-news.firebaseio.com/v0/showstories");
+var jobstories = new Firebase("https://hacker-news.firebaseio.com/v0/jobstories");
+var changes = new Firebase("https://hacker-news.firebaseio.com/v0/updates");
+
+/*
+  Variables to hold special cases.
+  Either this or reverse engineer HN's ranking algorithms.
+  Probably only needed for top articles, may change in the future
+*/
 var topStoryItems = [];
 var newStoryItems = [];
 var askStoryItems = [];
 var showStoryItems = [];
 var jobStoryItems = [];
 
-// respond with "hello world" when a GET request is made to the homepage
-app.get('/', function(req, res) {
-  res.send('hello world');
-});
+/*
+  Server config
+*/
+var pageSize = 30;
 
-app.get('/hnItems', function(req, res) {
-  var payload = {
-    meta: {
-      status: "ok",
-      total: 0
-    },
-    hnItems: []
-  };
-
-  var searchBody = {
-    query: {
-      match_all: {}
-    }
-  };
-
-  if (req.query.q) {
-    searchBody.query = {
-      multi_match: {
-        query: req.query.q,
-        fields: ["by", "text", "title"]
-      }
-    };
-  }
-
-  if (req.query.type) {
-    searchBody = {
-      query: {
-        filtered: {
-          query: searchBody.query,
-          filter: {
-            term: {
-              type: req.query.type
-            }
-          }
-        }
-      }
-    };
-  }
-
-  if (req.query.special) {
-    switch (req.query.special) {
-      case 'top':
-        payload.hnItems = topStoryItems;
-        payload.meta.total = topStoryItems.length;
-        res.json(payload);
-        break;
-      case 'new':
-        payload.hnItems = newStoryItems;
-        payload.meta.total = newStoryItems.length;
-        res.json(payload);
-        break;
-      case 'ask':
-        payload.hnItems = askStoryItems;
-        payload.meta.total = askStoryItems.length;
-        res.json(payload);
-        break;
-      case 'show':
-        payload.hnItems = showStoryItems;
-        payload.meta.total = showStoryItems.length;
-        res.json(payload);
-        break;
-      case 'job':
-        payload.hnItems = jobStoryItems;
-        payload.meta.total = jobStoryItems.length;
-        res.json(payload);
-        break;
-      default:
-        res.json(payload);
-        break;
-    }
-  } else {
-    elasticsearchClient.search({
-      index: 'hn',
-      type: 'item',
-      size: 50,
-      body: searchBody
-    }, function(err, response) {
-      // ...
-      if (err) {
-        console.log(err);
-        res.json(payload);
-      } else {
-        if (response.hits.hits && response.hits.hits.length > 0) {
-          payload.hnItems = _.map(response.hits.hits, function(hit) {
-            return hit._source;
-          });
-        }
-        res.json(payload);
-      }
-    });
-  }
-});
-
-app.listen(5003);
-
+/*
+  Helper functions to fetch and store data
+*/
 var getLocalItem = function(itemId) {
   return new Promise(function(fulfill, reject) {
     elasticsearchClient.get({
@@ -143,7 +70,30 @@ var getLocalItem = function(itemId) {
 };
 
 var getLocalItems = function(itemIds) {
-  return Promise.all(itemIds.map(getLocalItem));
+  return new Promise(function(fulfill, reject) {
+    elasticsearchClient.mget({
+      index: 'hn',
+      type: 'item',
+      body: {
+        ids: itemIds
+      }
+    }, function(err, response) {
+      if (err) {
+        //console.log(err);
+        reject(err.message);
+        //res.json(payload);
+      } else {
+        //console.log(response);
+        if (response.docs && response.docs.length > 0) {
+          fulfill(_.map(response.docs, function(hit) {
+            return hit._source;
+          }));
+        } else {
+          reject("No items");
+        }
+      }
+    });
+  });
 };
 
 var indexItem = function(item) {
@@ -286,14 +236,10 @@ var walkItems = function(itemId) {
     });
 };
 
-var maxitemid = new Firebase("https://hacker-news.firebaseio.com/v0/maxitem");
-var topstories = new Firebase("https://hacker-news.firebaseio.com/v0/topstories");
-var newstories = new Firebase("https://hacker-news.firebaseio.com/v0/newstories");
-var askstories = new Firebase("https://hacker-news.firebaseio.com/v0/askstories");
-var showstories = new Firebase("https://hacker-news.firebaseio.com/v0/showstories");
-var jobstories = new Firebase("https://hacker-news.firebaseio.com/v0/jobstories");
-var changes = new Firebase("https://hacker-news.firebaseio.com/v0/updates");
 
+/*
+  Fetch Hacker News data from Firebase
+*/
 maxitemid.once("value", function(snapshot) {
   elasticsearchClient.search({
     index: 'hn',
@@ -308,7 +254,7 @@ maxitemid.once("value", function(snapshot) {
       walkItems(snapshot.val());
     } else {
       if (response.hits.hits && response.hits.hits.length > 0) {
-        console.log(response.hits.hits[0]);
+        //console.log(response.hits.hits[0]);
         if (response.hits.hits[0].id > 1) {
           console.log('Walking items from ' + response.hits.hits[0].id);
           walkItems(response.hits[0].id);
@@ -325,8 +271,10 @@ maxitemid.once("value", function(snapshot) {
 });
 
 topstories.on("value", function(snapshot) {
+  console.log('Fetching top');
   var top = snapshot.val();
   fetchNewItems(top);
+  //topStoryItems = _.chunk(top, 30);
   getLocalItems(top)
     .catch(function(err) {
       console.log('Error finding all top items: ' + err);
@@ -334,7 +282,10 @@ topstories.on("value", function(snapshot) {
     .then(function(items) {
       //console.log('Top items found.');
       if (_.isArray(items)) {
-        topStoryItems = items;
+        topStoryItems = _.chunk(items, 30);
+        //console.log(topStoryItems);
+        topStoryItems.push(items.length);
+        //console.log(topStoryItems);
       }
     });
   //console.log(snapshot.val());
@@ -353,7 +304,8 @@ newstories.on("value", function(snapshot) {
     .then(function(items) {
       //console.log('Top items found.');
       if (_.isArray(items)) {
-        newStoryItems = items;
+        newStoryItems = _.chunk(items, 30);
+        newStoryItems.push(items.length);
       }
     });
   //console.log(snapshot.val());
@@ -372,7 +324,8 @@ askstories.on("value", function(snapshot) {
     .then(function(items) {
       //console.log('Top items found.');
       if (_.isArray(items)) {
-        askStoryItems = items;
+        askStoryItems = _.chunk(items, 30);
+        askStoryItems.push(items.length);
       }
     });
   //console.log(snapshot.val());
@@ -391,7 +344,8 @@ showstories.on("value", function(snapshot) {
     .then(function(items) {
       //console.log('Top items found.');
       if (_.isArray(items)) {
-        showStoryItems = items;
+        showStoryItems = _.chunk(items, 30);
+        showStoryItems.push(items.length);
       }
     });
   //console.log(snapshot.val());
@@ -410,7 +364,8 @@ jobstories.on("value", function(snapshot) {
     .then(function(items) {
       //console.log('Top items found.');
       if (_.isArray(items)) {
-        jobStoryItems = items;
+        jobStoryItems = _.chunk(items, 30);
+        jobStoryItems.push(items.length);
       }
     });
   //console.log(snapshot.val());
@@ -429,3 +384,122 @@ changes.on("value", function(snapshot) {
   console.log(error);
   //console.log("The read failed: " + errorObject.code);
 });
+
+
+/*
+  Express server to seve Hacker News data from ElasticSearch
+*/
+app.use(cors());
+app.use(compression());
+
+// respond with "hello world" when a GET request is made to the homepage
+app.get('/', function(req, res) {
+  res.send('hello world');
+});
+
+app.get('/hnItems', function(req, res) {
+  var payload = {
+    meta: {
+      status: "ok",
+      total: 0,
+      pageSize: pageSize
+    },
+    hnItems: []
+  };
+
+  var searchBody = {
+    query: {
+      match_all: {}
+    }
+  };
+
+  if (req.query.q) {
+    searchBody.query = {
+      multi_match: {
+        query: req.query.q,
+        fields: ["by", "text", "title"]
+      }
+    };
+  }
+
+  if (req.query.type) {
+    searchBody = {
+      query: {
+        filtered: {
+          query: searchBody.query,
+          filter: {
+            term: {
+              type: req.query.type
+            }
+          }
+        }
+      }
+    };
+  }
+
+  if (req.query.page && req.query.page > 0) {
+    req.query.page = Math.ceil(req.query.page);
+  } else {
+    req.query.page = 1;
+  }
+
+  payload.meta.page = req.query.page;
+
+  var sendSpecial = function(items) {
+    payload.meta.total = items[items.length - 1];
+    payload.meta.pageTotal = items.length - 1;
+    if (payload.meta.page < items.length - 1) {
+      payload.hnItems = items[payload.meta.page - 1];
+    } else {
+      payload.meta.page = 1;
+      payload.hnItems = items[0];
+    }
+    res.json(payload);
+  };
+
+  if (req.query.special) {
+    switch (req.query.special) {
+      case 'top':
+        sendSpecial(topStoryItems);
+        break;
+      case 'new':
+        sendSpecial(newStoryItems);
+        break;
+      case 'ask':
+        sendSpecial(askStoryItems);
+        break;
+      case 'show':
+        sendSpecial(showStoryItems);
+        break;
+      case 'job':
+        sendSpecial(jobStoryItems);
+        break;
+      default:
+        res.json(payload);
+        break;
+    }
+  } else {
+    elasticsearchClient.search({
+      index: 'hn',
+      type: 'item',
+      size: pageSize,
+      from: pageSize * (payload.meta.page - 1),
+      body: searchBody
+    }, function(err, response) {
+      // ...
+      if (err) {
+        console.log(err);
+        res.json(payload);
+      } else {
+        if (response.hits.hits && response.hits.hits.length > 0) {
+          payload.hnItems = _.map(response.hits.hits, function(hit) {
+            return hit._source;
+          });
+        }
+        res.json(payload);
+      }
+    });
+  }
+});
+
+app.listen(5003);
