@@ -203,26 +203,15 @@ var fetchUsers = function(usernames) {
   }
 };
 
-var fetchNewItems = function(itemIds) {
-  if (_.isArray(itemIds) && itemIds.length > 0) {
-    var fetchId = itemIds.shift();
-    getLocalItem(fetchId)
-      .catch(function() {
-        fetchItem(fetchId)
-          .catch(function() {
-            fetchNewItems(itemIds);
-            //reject('Failed to fetched item ' + itemId + ': ' + err);
-          })
-          .then(function() {
-            fetchNewItems(itemIds);
-            //fulfill('Fetched item ' + itemId + ' successfully.');
-          });
-      })
-      .then(function() {
-        fetchNewItems(itemIds);
-        //fulfill('Fetched item ' + itemId + ' successfully.');
-      });
+var fetchNewItems = function(itemIds, oldItemIds) {
+  var idsToFetch = [];
+  if (oldItemIds && _.isArray(oldItemIds)) {
+    if (_.isArray(itemIds) && itemIds.length > 0) {
+      idsToFetch = _.difference(itemIds, oldItemIds);
+    }
   }
+
+  return Promise.all(idsToFetch.map(fetchItem));
 };
 
 var walkItems = function(itemId) {
@@ -280,104 +269,116 @@ maxitemid.once("value", function(snapshot) {
 });
 
 topstories.on("value", function(snapshot) {
-  console.log('Fetching top');
-  var top = snapshot.val();
-  fetchNewItems(top);
-  //topStoryItems = _.chunk(top, 30);
-  getLocalItems(top)
-    .catch(function(err) {
-      console.log('Error finding all top items: ' + err);
-    })
-    .then(function(items) {
-      //console.log('Top items found.');
-      if (_.isArray(items)) {
-        topStoryItems = _.chunk(items, 30);
-        //console.log(topStoryItems);
-        topStoryItems.push(items.length);
-        //console.log(topStoryItems);
-      }
-    });
-  //console.log(snapshot.val());
+  //console.log('Fetching top');
+  var ids = snapshot.val();
+  fetchNewItems(ids, topStoryIds).then(function() {
+    topStoryIds = ids;
+    getLocalItems(ids)
+      .catch(function(err) {
+        console.log('Error finding all top items: ' + err);
+      })
+      .then(function(items) {
+        //console.log('Top items found.');
+        if (_.isArray(items)) {
+          topStoryItems = _.chunk(items, 30);
+          //console.log(topStoryItems);
+          topStoryItems.push(items.length);
+          //console.log(topStoryItems);
+        }
+      });
+  });
 }, function(error) {
   console.log(error);
   //console.log("The read failed: " + errorObject.code);
 });
 
 newstories.on("value", function(snapshot) {
-  var top = snapshot.val();
-  fetchNewItems(top);
-  getLocalItems(top)
-    .catch(function(err) {
-      console.log('Error finding all new items: ' + err);
-    })
-    .then(function(items) {
-      //console.log('Top items found.');
-      if (_.isArray(items)) {
-        newStoryItems = _.chunk(items, 30);
-        newStoryItems.push(items.length);
-      }
-    });
-  //console.log(snapshot.val());
+  var ids = snapshot.val();
+  fetchNewItems(ids, newStoryIds).then(function() {
+    newStoryIds = ids;
+    getLocalItems(ids)
+      .catch(function(err) {
+        console.log('Error finding all top items: ' + err);
+      })
+      .then(function(items) {
+        //console.log('Top items found.');
+        if (_.isArray(items)) {
+          newStoryItems = _.chunk(items, 30);
+          //console.log(topStoryItems);
+          newStoryItems.push(items.length);
+          //console.log(topStoryItems);
+        }
+      });
+  });
 }, function(error) {
   console.log(error);
   //console.log("The read failed: " + errorObject.code);
 });
 
 askstories.on("value", function(snapshot) {
-  var top = snapshot.val();
-  fetchNewItems(top);
-  getLocalItems(top)
-    .catch(function(err) {
-      console.log('Error finding all ask items: ' + err);
-    })
-    .then(function(items) {
-      //console.log('Top items found.');
-      if (_.isArray(items)) {
-        askStoryItems = _.chunk(items, 30);
-        askStoryItems.push(items.length);
-      }
-    });
-  //console.log(snapshot.val());
+  var ids = snapshot.val();
+  fetchNewItems(ids, askStoryIds).then(function() {
+    askStoryIds = ids;
+    getLocalItems(ids)
+      .catch(function(err) {
+        console.log('Error finding all top items: ' + err);
+      })
+      .then(function(items) {
+        //console.log('Top items found.');
+        if (_.isArray(items)) {
+          askStoryItems = _.chunk(items, 30);
+          //console.log(topStoryItems);
+          askStoryItems.push(items.length);
+          //console.log(topStoryItems);
+        }
+      });
+  });
 }, function(error) {
   console.log(error);
   //console.log("The read failed: " + errorObject.code);
 });
 
 showstories.on("value", function(snapshot) {
-  var top = snapshot.val();
-  fetchNewItems(top);
-  getLocalItems(top)
-    .catch(function(err) {
-      console.log('Error finding all show items: ' + err);
-    })
-    .then(function(items) {
-      //console.log('Top items found.');
-      if (_.isArray(items)) {
-        showStoryItems = _.chunk(items, 30);
-        showStoryItems.push(items.length);
-      }
-    });
-  //console.log(snapshot.val());
+  var ids = snapshot.val();
+  fetchNewItems(ids, showStoryIds).then(function() {
+    showStoryIds = ids;
+    getLocalItems(ids)
+      .catch(function(err) {
+        console.log('Error finding all top items: ' + err);
+      })
+      .then(function(items) {
+        //console.log('Top items found.');
+        if (_.isArray(items)) {
+          showStoryItems = _.chunk(items, 30);
+          //console.log(topStoryItems);
+          showStoryItems.push(items.length);
+          //console.log(topStoryItems);
+        }
+      });
+  });
 }, function(error) {
   console.log(error);
   //console.log("The read failed: " + errorObject.code);
 });
 
 jobstories.on("value", function(snapshot) {
-  var top = snapshot.val();
-  fetchNewItems(top);
-  getLocalItems(top)
-    .catch(function(err) {
-      console.log('Error finding all job items: ' + err);
-    })
-    .then(function(items) {
-      //console.log('Top items found.');
-      if (_.isArray(items)) {
-        jobStoryItems = _.chunk(items, 30);
-        jobStoryItems.push(items.length);
-      }
-    });
-  //console.log(snapshot.val());
+  var ids = snapshot.val();
+  fetchNewItems(ids, jobStoryIds).then(function() {
+    jobStoryIds = ids;
+    getLocalItems(ids)
+      .catch(function(err) {
+        console.log('Error finding all top items: ' + err);
+      })
+      .then(function(items) {
+        //console.log('Top items found.');
+        if (_.isArray(items)) {
+          jobStoryItems = _.chunk(items, 30);
+          //console.log(topStoryItems);
+          jobStoryItems.push(items.length);
+          //console.log(topStoryItems);
+        }
+      });
+  });
 }, function(error) {
   console.log(error);
   //console.log("The read failed: " + errorObject.code);
