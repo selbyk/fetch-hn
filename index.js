@@ -280,7 +280,7 @@ topstories.on("value", function(snapshot) {
       .then(function(items) {
         //console.log('Top items found.');
         if (_.isArray(items)) {
-          topStoryItems = _.chunk(items, 30);
+          topStoryItems = _.chunk(_.without(items, null), pageSize);
           //console.log(topStoryItems);
           topStoryItems.push(items.length);
           //console.log(topStoryItems);
@@ -303,7 +303,7 @@ newstories.on("value", function(snapshot) {
       .then(function(items) {
         //console.log('Top items found.');
         if (_.isArray(items)) {
-          newStoryItems = _.chunk(items, 30);
+          newStoryItems = _.chunk(_.without(items, null), pageSize);
           //console.log(topStoryItems);
           newStoryItems.push(items.length);
           //console.log(topStoryItems);
@@ -326,7 +326,7 @@ askstories.on("value", function(snapshot) {
       .then(function(items) {
         //console.log('Top items found.');
         if (_.isArray(items)) {
-          askStoryItems = _.chunk(items, 30);
+          askStoryItems = _.chunk(_.without(items, null), pageSize);
           //console.log(topStoryItems);
           askStoryItems.push(items.length);
           //console.log(topStoryItems);
@@ -349,7 +349,7 @@ showstories.on("value", function(snapshot) {
       .then(function(items) {
         //console.log('Top items found.');
         if (_.isArray(items)) {
-          showStoryItems = _.chunk(items, 30);
+          showStoryItems = _.chunk(_.without(items, null), pageSize);
           //console.log(topStoryItems);
           showStoryItems.push(items.length);
           //console.log(topStoryItems);
@@ -372,7 +372,7 @@ jobstories.on("value", function(snapshot) {
       .then(function(items) {
         //console.log('Top items found.');
         if (_.isArray(items)) {
-          jobStoryItems = _.chunk(items, 30);
+          jobStoryItems = _.chunk(_.without(items, null), pageSize);
           //console.log(topStoryItems);
           jobStoryItems.push(items.length);
           //console.log(topStoryItems);
