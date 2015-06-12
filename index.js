@@ -290,6 +290,7 @@ maxitemid.once("value", function(snapshot) {
       }
     }
   });
+  walkItems(snapshot.val(), snapshot.val()-1000);
   //console.log(snapshot.val());
 }, function(errorObject) {
   console.log("The read failed: " + errorObject.code);
