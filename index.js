@@ -143,28 +143,26 @@ var indexUser = function(user) {
 var fetchItem = function(itemId) {
   //console.log('Fetching item ' + itemId);
   return new Promise(function(fulfill, reject) {
-    request('https://hacker-news.firebaseio.com/v0/item/' + itemId + '.json', function(error, response, body) {
-      if (error) {
-        //console.log(error);
-        reject(error);
-      } else {
-        //console.log(body); // Show the HTML for the Google homepage.
-        fulfill(indexItem(JSON.parse(body)));
-      }
+    var getitem = new Firebase("https://hacker-news.firebaseio.com/v0/item/" + itemId);
+    getitem.once("value", function(snapshot) {
+      fulfill(indexItem(snapshot.val()));
+      //console.log(snapshot.val());
+    }, function(errorObject) {
+      console.log("The read failed: " + errorObject.code);
+      reject("The fetching item failed: " + errorObject.code);
     });
   });
 };
 
 var fetchUser = function(username) {
   return new Promise(function(fulfill, reject) {
-    request('https://hacker-news.firebaseio.com/v0/user/' + username + '.json', function(error, response, body) {
-      if (error) {
-        //console.log(error);
-        reject(error);
-      } else {
-        //console.log(body); // Show the HTML for the Google homepage.
-        fulfill(indexUser(JSON.parse(body)));
-      }
+    var getuser = new Firebase('https://hacker-news.firebaseio.com/v0/user/' + username);
+    getuser.once("value", function(snapshot) {
+      fulfill(indexUser(snapshot.val()));
+      //console.log(snapshot.val());
+    }, function(errorObject) {
+      console.log("The read failed: " + errorObject.code);
+      reject("The fetching item failed: " + errorObject.code);
     });
   });
 };
@@ -191,7 +189,7 @@ var fetchUsers = function(usernames) {
     var fetchUsername = usernames.shift();
     fetchUser(fetchUsername)
       .catch(function(err) {
-        console.log('Failed to fetched item ' + fetchUsername + ': ' + err);
+        console.log('Failed to fetched user ' + fetchUsername + ': ' + err);
         fetchUsers(usernames);
         //reject('Failed to fetched item ' + itemId + ': ' + err);
       })
