@@ -214,19 +214,20 @@ var fetchNewItems = function(itemIds, oldItemIds) {
   return Promise.all(idsToFetch.map(fetchItem));
 };
 
-var walkItems = function(itemId) {
-  fetchItem(itemId)
+var walkItems = function(startItemId, stopItemId) {
+  if(!stopItemId) stopItemId = 1;
+  fetchItem(startItemId)
     .catch(function(err) {
-      console.log('Failed to fetched item ' + itemId + ': ' + err);
-      if (itemId > 1) {
-        walkItems(itemId - 1);
+      console.log('Failed to fetched item ' + startItemId + ': ' + err);
+      if (startItemId > stopItemId) {
+        walkItems(startItemId - 1, stopItemId);
       }
-      //reject('Failed to fetched item ' + itemId + ': ' + err);
+      //reject('Failed to fetched item ' + startItemId + ': ' + err);
     })
     .then(function() {
-      //console.log('Fetched item ' + itemId + ' successfully.');
-      if (itemId > 1) {
-        walkItems(itemId - 1);
+      //console.log('Fetched item ' + startItemId + ' successfully.');
+      if (startItemId > stopItemId) {
+        walkItems(startItemId - 1, stopItemId);
       }
       //fulfill('Fetched item ' + itemId + ' successfully.');
     });
@@ -237,6 +238,32 @@ var walkItems = function(itemId) {
   Fetch Hacker News data from Firebase
 */
 maxitemid.once("value", function(snapshot) {
+  elasticsearchClient.search({
+    index: 'hn',
+    type: 'item',
+    sort: 'id:desc',
+    size: 1
+  }, function(err, response) {
+    // ...
+    console.log(response);
+    console.log(response.hits);
+    if (err) {
+      console.log(err);
+      console.log('Walking items from ' + snapshot.val());
+      walkItems(snapshot.val());
+    } else {
+      if (response.hits.hits && response.hits.hits.length > 0) {
+        //console.log(response.hits.hits[0]);
+        if (response.hits.hits[0]._id > 0) {
+          console.log('Walking items from ' + snapshot.val() + ' to ' + response.hits.hits[0]._id);
+          walkItems(snapshot.val(), response.hits.hits[0]._id);
+        } else {
+          console.log('Walking items from ' + snapshot.val());
+          walkItems(snapshot.val());
+        }
+      }
+    }
+  });
   elasticsearchClient.search({
     index: 'hn',
     type: 'item',
