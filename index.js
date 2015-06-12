@@ -241,32 +241,6 @@ maxitemid.once("value", function(snapshot) {
   elasticsearchClient.search({
     index: 'hn',
     type: 'item',
-    sort: 'id:desc',
-    size: 1
-  }, function(err, response) {
-    // ...
-    console.log(response);
-    console.log(response.hits);
-    if (err) {
-      console.log(err);
-      console.log('Walking items from ' + snapshot.val());
-      walkItems(snapshot.val());
-    } else {
-      if (response.hits.hits && response.hits.hits.length > 0) {
-        //console.log(response.hits.hits[0]);
-        if (response.hits.hits[0]._id > 0) {
-          console.log('Walking items from ' + snapshot.val() + ' to ' + response.hits.hits[0]._id);
-          walkItems(snapshot.val(), response.hits.hits[0]._id);
-        } else {
-          console.log('Walking items from ' + snapshot.val());
-          walkItems(snapshot.val());
-        }
-      }
-    }
-  });
-  elasticsearchClient.search({
-    index: 'hn',
-    type: 'item',
     sort: 'id:asc',
     size: 1
   }, function(err, response) {
