@@ -1,64 +1,65 @@
-"use strict";
-
+'use strict';
 /*
   External npm modules
 */
-var Firebase = require("firebase");
-var Promise = require('promise');
-var _ = require('lodash');
-var elasticsearch = require('elasticsearch');
-var request = require('request');
-var express = require('express');
-var app = express();
-var cors = require('cors');
-var compression = require('compression');
+const _ = require('lodash');
+const Firebase = require("firebase");
+const elasticsearch = require('elasticsearch');
+const request = require('request');
+const express = require('express');
 
 /*
   Local elasticsearch client
 */
-var elasticsearchClient = new elasticsearch.Client({
+const elasticsearchClient = new elasticsearch.Client({
   host: 'localhost:9200',
-  log: 'error'
+  log: 'trace'
 });
 
 /*
   Firebase clients
 */
-var maxitemid = new Firebase("https://hacker-news.firebaseio.com/v0/maxitem");
-var topstories = new Firebase("https://hacker-news.firebaseio.com/v0/topstories");
-var newstories = new Firebase("https://hacker-news.firebaseio.com/v0/newstories");
-var askstories = new Firebase("https://hacker-news.firebaseio.com/v0/askstories");
-var showstories = new Firebase("https://hacker-news.firebaseio.com/v0/showstories");
-var jobstories = new Firebase("https://hacker-news.firebaseio.com/v0/jobstories");
-var changes = new Firebase("https://hacker-news.firebaseio.com/v0/updates");
+const maxitemid = new Firebase("https://hacker-news.firebaseio.com/v0/maxitem");
+const topstories = new Firebase("https://hacker-news.firebaseio.com/v0/topstories");
+const newstories = new Firebase("https://hacker-news.firebaseio.com/v0/newstories");
+const askstories = new Firebase("https://hacker-news.firebaseio.com/v0/askstories");
+const showstories = new Firebase("https://hacker-news.firebaseio.com/v0/showstories");
+const jobstories = new Firebase("https://hacker-news.firebaseio.com/v0/jobstories");
+const changes = new Firebase("https://hacker-news.firebaseio.com/v0/updates");
 
 /*
   Variables to hold special cases.
   Either this or reverse engineer HN's ranking algorithms.
   Probably only needed for top articles, may change in the future
 */
-var topStoryIds = [];
-var newStoryIds = [];
-var askStoryIds = [];
-var showStoryIds = [];
-var jobStoryIds = [];
+let topStoryIds = [];
+let newStoryIds = [];
+let askStoryIds = [];
+let showStoryIds = [];
+let jobStoryIds = [];
 
-var topStoryItems = [];
-var newStoryItems = [];
-var askStoryItems = [];
-var showStoryItems = [];
-var jobStoryItems = [];
+let topStoryItems = [];
+let newStoryItems = [];
+let askStoryItems = [];
+let showStoryItems = [];
+let jobStoryItems = [];
 
 /*
   Server config
 */
-var pageSize = 30;
+let pageSize = 30;
 
 /*
   Helper functions to fetch and store data
 */
-var getLocalItem = function(itemId) {
-  return new Promise(function(fulfill, reject) {
+
+/**
+ * Gets hn item from elastic search
+ * @param  {int} itemId
+ * @return {Promise}        promise returning item
+ */
+function getLocalItem(itemId) {
+  return new Promise(function(resolve, reject) {
     elasticsearchClient.get({
       index: 'hn',
       type: 'item',
@@ -69,14 +70,19 @@ var getLocalItem = function(itemId) {
         reject(error.message);
       } else {
         //console.log(response);
-        fulfill(response._source);
+        resolve(response._source);
       }
     });
   });
 };
 
-var getLocalItems = function(itemIds) {
-  return new Promise(function(fulfill, reject) {
+/**
+ * Gets hn item from elastic search
+ * @param  {int[]} itemIds
+ * @return {Promise}        promise returning array of items
+ */
+function getLocalItems(itemIds) {
+  return new Promise(function(resolve, reject) {
     elasticsearchClient.mget({
       index: 'hn',
       type: 'item',
@@ -91,7 +97,7 @@ var getLocalItems = function(itemIds) {
       } else {
         //console.log(response);
         if (response.docs && response.docs.length > 0) {
-          fulfill(_.map(response.docs, function(hit) {
+          resolve(_.map(response.docs, function(hit) {
             return hit._source;
           }));
         } else {
@@ -102,8 +108,13 @@ var getLocalItems = function(itemIds) {
   });
 };
 
-var indexItem = function(item) {
-  return new Promise(function(fulfill, reject) {
+/**
+ * Indexs hn item into elastic
+ * @param  {Object} item
+ * @return {Promise}      returns elastic response
+ */
+function indexItem(item) {
+  return new Promise(function(resolve, reject) {
     elasticsearchClient.index({
       index: 'hn',
       type: 'item',
@@ -115,14 +126,19 @@ var indexItem = function(item) {
         reject(error.message);
       } else {
         //console.log(response);
-        fulfill(response);
+        resolve(response);
       }
     });
   });
 };
 
-var indexUser = function(user) {
-  return new Promise(function(fulfill, reject) {
+/**
+ * Indexs hn user into elastic
+ * @param  {Object} user
+ * @return {Promise}      returns elastic response
+ */
+function indexUser(user) {
+  return new Promise(function(resolve, reject) {
     elasticsearchClient.index({
       index: 'hn',
       type: 'user',
@@ -134,18 +150,23 @@ var indexUser = function(user) {
         reject(error.message);
       } else {
         //console.log(response);
-        fulfill(response);
+        resolve(response);
       }
     });
   });
 };
 
-var fetchItem = function(itemId) {
+/**
+ * Fetchs hn item from firebase
+ * @param  {int} itemId
+ * @return {Promise}        promise returning item
+ */
+function fetchItem(itemId) {
   //console.log('Fetching item ' + itemId);
-  return new Promise(function(fulfill, reject) {
-    var getitem = new Firebase("https://hacker-news.firebaseio.com/v0/item/" + itemId);
+  return new Promise(function(resolve, reject) {
+    let getitem = new Firebase("https://hacker-news.firebaseio.com/v0/item/" + itemId);
     getitem.once("value", function(snapshot) {
-      fulfill(indexItem(snapshot.val()));
+      resolve(indexItem(snapshot.val()));
       //console.log(snapshot.val());
     }, function(errorObject) {
       console.log("The read failed: " + errorObject.code);
@@ -154,11 +175,16 @@ var fetchItem = function(itemId) {
   });
 };
 
-var fetchUser = function(username) {
-  return new Promise(function(fulfill, reject) {
-    var getuser = new Firebase('https://hacker-news.firebaseio.com/v0/user/' + username);
+/**
+ * Fetchs hn user from firebase
+ * @param  {String} username
+ * @return {Promise}        promise returning user
+ */
+function fetchUser(username) {
+  return new Promise(function(resolve, reject) {
+    let getuser = new Firebase('https://hacker-news.firebaseio.com/v0/user/' + username);
     getuser.once("value", function(snapshot) {
-      fulfill(indexUser(snapshot.val()));
+      resolve(indexUser(snapshot.val()));
       //console.log(snapshot.val());
     }, function(errorObject) {
       console.log("The read failed: " + errorObject.code);
@@ -167,9 +193,14 @@ var fetchUser = function(username) {
   });
 };
 
-var fetchItems = function(itemIds) {
+/**
+ * Fetchs hn items from firebase
+ * @param  {int[]} itemIds
+ * @return {Promise}        promise returning items
+ */
+function fetchItems(itemIds) {
   if (_.isArray(itemIds) && itemIds.length > 0) {
-    var fetchId = itemIds.shift();
+    let fetchId = itemIds.shift();
     fetchItem(fetchId)
       .catch(function(err) {
         console.log('Failed to fetched item ' + fetchId + ': ' + err);
@@ -179,14 +210,19 @@ var fetchItems = function(itemIds) {
       .then(function() {
         //console.log('Fetched item ' + fetchId + ' successfully.');
         fetchItems(itemIds);
-        //fulfill('Fetched item ' + itemId + ' successfully.');
+        //resolve('Fetched item ' + itemId + ' successfully.');
       });
   }
 };
 
-var fetchUsers = function(usernames) {
+/**
+ * Fetchs hn users from firebase
+ * @param  {String[]} usernames
+ * @return {Promise}        promise returning user
+ */
+function fetchUsers(usernames) {
   if (_.isArray(usernames) && usernames.length > 0) {
-    var fetchUsername = usernames.shift();
+    let fetchUsername = usernames.shift();
     fetchUser(fetchUsername)
       .catch(function(err) {
         console.log('Failed to fetched user ' + fetchUsername + ': ' + err);
@@ -196,13 +232,13 @@ var fetchUsers = function(usernames) {
       .then(function() {
         //console.log('Fetched item ' + fetchId + ' successfully.');
         fetchUsers(usernames);
-        //fulfill('Fetched item ' + itemId + ' successfully.');
+        //resolve('Fetched item ' + itemId + ' successfully.');
       });
   }
 };
 
-var fetchNewItems = function(itemIds, oldItemIds) {
-  var idsToFetch = [];
+function fetchNewItems(itemIds, oldItemIds) {
+  let idsToFetch = [];
   if (oldItemIds && _.isArray(oldItemIds)) {
     if (_.isArray(itemIds) && itemIds.length > 0) {
       idsToFetch = _.difference(itemIds, oldItemIds);
@@ -212,8 +248,8 @@ var fetchNewItems = function(itemIds, oldItemIds) {
   return Promise.all(idsToFetch.map(fetchItem));
 };
 
-var walkItems = function(startItemId, stopItemId) {
-  if(!stopItemId) stopItemId = 1;
+function walkItems(startItemId, stopItemId) {
+  if (!stopItemId) stopItemId = 1;
   fetchItem(startItemId)
     .catch(function(err) {
       console.log('Failed to fetched item ' + startItemId + ': ' + err);
@@ -227,15 +263,14 @@ var walkItems = function(startItemId, stopItemId) {
       if (startItemId > stopItemId) {
         walkItems(startItemId - 1, stopItemId);
       }
-      //fulfill('Fetched item ' + itemId + ' successfully.');
+      //resolve('Fetched item ' + itemId + ' successfully.');
     });
 };
-
 
 /*
   Fetch Hacker News data from Firebase
 */
-maxitemid.once("value", function(snapshot) {
+/*maxitemid.once("value", function(snapshot) {
   elasticsearchClient.search({
     index: 'hn',
     type: 'item',
@@ -291,11 +326,11 @@ maxitemid.once("value", function(snapshot) {
   //console.log(snapshot.val());
 }, function(errorObject) {
   console.log("The read failed: " + errorObject.code);
-});
+});*/
 
 topstories.on("value", function(snapshot) {
   //console.log('Fetching top');
-  var ids = snapshot.val();
+  let ids = snapshot.val();
   fetchNewItems(ids, topStoryIds).then(function() {
     topStoryIds = ids;
     getLocalItems(ids)
@@ -318,7 +353,7 @@ topstories.on("value", function(snapshot) {
 });
 
 newstories.on("value", function(snapshot) {
-  var ids = snapshot.val();
+  let ids = snapshot.val();
   fetchNewItems(ids, newStoryIds).then(function() {
     newStoryIds = ids;
     getLocalItems(ids)
@@ -341,7 +376,7 @@ newstories.on("value", function(snapshot) {
 });
 
 askstories.on("value", function(snapshot) {
-  var ids = snapshot.val();
+  let ids = snapshot.val();
   fetchNewItems(ids, askStoryIds).then(function() {
     askStoryIds = ids;
     getLocalItems(ids)
@@ -364,7 +399,7 @@ askstories.on("value", function(snapshot) {
 });
 
 showstories.on("value", function(snapshot) {
-  var ids = snapshot.val();
+  let ids = snapshot.val();
   fetchNewItems(ids, showStoryIds).then(function() {
     showStoryIds = ids;
     getLocalItems(ids)
@@ -387,7 +422,7 @@ showstories.on("value", function(snapshot) {
 });
 
 jobstories.on("value", function(snapshot) {
-  var ids = snapshot.val();
+  let ids = snapshot.val();
   fetchNewItems(ids, jobStoryIds).then(function() {
     jobStoryIds = ids;
     getLocalItems(ids)
@@ -410,7 +445,7 @@ jobstories.on("value", function(snapshot) {
 });
 
 changes.on("value", function(snapshot) {
-  var updates = snapshot.val();
+  let updates = snapshot.val();
   console.log('Fetching updates');
   fetchItems(updates.items);
   fetchUsers(updates.profiles);
@@ -420,12 +455,10 @@ changes.on("value", function(snapshot) {
   //console.log("The read failed: " + errorObject.code);
 });
 
-
 /*
   Express server to seve Hacker News data from ElasticSearch
 */
-app.use(cors());
-app.use(compression());
+const app = express();
 
 // respond with "hello world" when a GET request is made to the homepage
 app.get('/', function(req, res) {
@@ -433,7 +466,7 @@ app.get('/', function(req, res) {
 });
 
 app.get('/hnItems', function(req, res) {
-  var payload = {
+  let payload = {
     meta: {
       status: "ok",
       total: 0,
@@ -442,7 +475,7 @@ app.get('/hnItems', function(req, res) {
     hnItems: []
   };
 
-  var searchBody = {
+  let searchBody = {
     query: {
       match_all: {}
     }
@@ -507,7 +540,7 @@ app.get('/hnItems', function(req, res) {
 
   payload.meta.page = req.query.page;
 
-  var sendSpecial = function(items) {
+  let sendSpecial = function(items) {
     payload.meta.total = items[items.length - 1];
     payload.meta.pageTotal = items.length - 1;
     if (payload.meta.page < items.length - 1) {

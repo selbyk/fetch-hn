@@ -9,13 +9,10 @@
   "author": "Selby Kendrick",
   "license": "MIT",
   "dependencies": {
-    "compression": "^1.4.3",
-    "cors": "^2.6.0",
     "elasticsearch": "^11.0.1",
     "express": "^4.12.3",
     "firebase": "^2.2.4",
-    "lodash": "^3.8.0",
-    "promise": "^7.0.1",
-    "request": "^2.55.0"
+    "lodash": "^4.15.0",
+    "request": "^2.74.0"
   }
 }
