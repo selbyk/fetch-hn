@@ -12,8 +12,7 @@ const express = require('express');
   Local elasticsearch client
 */
 const elasticsearchClient = new elasticsearch.Client({
-  host: 'localhost:9200',
-  log: 'trace'
+  host: 'localhost:9200'
 });
 
 /*
