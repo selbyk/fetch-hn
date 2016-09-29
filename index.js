@@ -138,10 +138,12 @@ function indexItem(item) {
  */
 function indexUser(user) {
   return new Promise(function(resolve, reject) {
+    user.username = user.id;
+    delete user.id;
     elasticsearchClient.index({
       index: 'hn',
       type: 'user',
-      id: user.id,
+      id: user.username,
       body: user
     }, function(error, response) {
       if (error) {
