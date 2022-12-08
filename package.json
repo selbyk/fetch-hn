@@ -10,7 +10,7 @@
   "license": "MIT",
   "dependencies": {
     "@elastic/elasticsearch": "^7.11.0",
-    "express": "^4.12.3",
+    "express": "^4.18.2",
     "firebase": "^8.2.7",
     "lodash": "^4.15.0"
   }
